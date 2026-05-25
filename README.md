@@ -1,6 +1,6 @@
 # Impacto do Clima na Produção Agrícola e Inflação no Brasil (2020–2024)
 
-**Projeto Final — Curso de Ciência de Dados**
+**Projeto Final — Estrutura de Dados-A1053-N-CIENCIA DE DADOS**
 
 ## Tema e Justificativa
 
@@ -116,39 +116,7 @@ python scripts/fetch_inmet.py --anos 2022 2023 2024
 
 ## Screenshots
 
-### Aba 1 — Visão Geral
-
-![Visão Geral](docs/screenshots/01_visao_geral.png)
-
-*KPIs de produção total, variação percentual, IPCA Alimentação acumulado e estado top produtor, com filtros globais na sidebar.*
-
-### Aba 2 — Clima
-
-![Clima](docs/screenshots/02_clima.png)
-
-*Séries temporais de precipitação e temperatura mensais por UF, com heatmaps de anomalia climática.*
-
-### Aba 3 — Produção Agrícola
-
-![Produção Agrícola](docs/screenshots/03_producao.png)
-
-*Ranking de UFs produtoras, evolução do rendimento médio (t/ha) e mapa coroplético de produção por estado.*
-
-### Aba 4 — Inflação Alimentos
-
-![Inflação](docs/screenshots/04_inflacao.png)
-
-*IPCA Alimentação e Bebidas por Região Metropolitana vs índice nacional, com destaque de meses de alta variação.*
-
-### Aba 5 — Correlações & Insights
-
-![Correlações](docs/screenshots/05_correlacoes.png)
-
-*Scatter de anomalia de chuva vs produção com trendline OLS por UF, matriz de Pearson e análise de cross-correlation com slider de defasagem interativo.*
-
-![Correlações Detalhadas](docs/screenshots/08_correlacoes_final.png)
-
-*Detalhe do gráfico de cross-correlation mostrando a defasagem de meses entre evento climático e impacto no IPCA.*
+*(capturas serão adicionadas ao `docs/screenshots/` após a execução do dashboard)*
 
 ## Limitações Conhecidas
 
