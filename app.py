@@ -448,43 +448,64 @@ with tabs[4]:
         sem_dados()
     else:
         # ── 5.1 Scatter clima × produção ────────────────────────────────────
-        st.subheader("1. Clima na Safra × Quantidade Produzida")
+        st.subheader("1. Clima na Safra × Produção")
         st.markdown(
-            "Cada ponto é um UF-ano. As retas de tendência (OLS) ajudam a identificar como "
-            "variáveis de chuva e temperatura na safra impactam a produção agrícola."
+            "Cada ponto é um UF-ano. Use o menu abaixo para comparar a relação entre chuva/temperatura na safra "
+            "e duas métricas de produção: quantidade produzida ou área plantada menos área colhida."
         )
 
-        st.subheader("Chuva na Safra × Produção")
-        if "anomalia_chuva_safra" in df_a.columns and "qtd_t" in df_a.columns:
+        produto_metric = st.selectbox(
+            "Métrica de produção",
+            options=[
+                ("Quantidade Produzida (t)", "qtd_t"),
+                ("Rendimento Médio (kg/ha)", "rendimento_kg_ha"),
+            ],
+            format_func=lambda x: x[0],
+            index=0,
+        )
+        metric_label, metric_col = produto_metric
+
+        st.subheader(f"Chuva na Safra × {metric_label}")
+        if "anomalia_chuva_safra" in df_a.columns and metric_col in df_a.columns:
+            df_chuva = df_a.dropna(subset=["anomalia_chuva_safra", metric_col])
             fig_scatter = scatter_correlacao(
-                df_a.dropna(subset=["anomalia_chuva_safra", "qtd_t"]),
-                x="anomalia_chuva_safra", y="qtd_t", color="uf",
-                title=f"Anomalia de Chuva na Safra vs Produção — {cultura_sel.split()[0]}",
+                df_chuva,
+                x="anomalia_chuva_safra", y=metric_col, color="uf",
+                title=f"Anomalia de Chuva na Safra vs {metric_label} — {cultura_sel.split()[0]}",
                 xlab="Anomalia de Chuva (mm, vs climatologia)",
-                ylab="Quantidade Produzida (t)",
+                ylab=metric_label,
             )
             st.plotly_chart(fig_scatter, use_container_width=True)
         else:
-            st.info(
-                "Coluna `anomalia_chuva_safra` não encontrada. "
-                "Verifique se o ETL foi executado com dados INMET disponíveis."
-            )
+            if "anomalia_chuva_safra" not in df_a.columns:
+                st.info(
+                    "Coluna `anomalia_chuva_safra` não encontrada. Verifique se o ETL foi executado com dados INMET disponíveis."
+                )
+            else:
+                st.info(
+                    f"Coluna `{metric_col}` não encontrada no dataset. Rode o pipeline ETL atualizado com PAM e SIDRA."
+                )
 
-        st.subheader("Temperatura Média na Safra × Produção")
-        if "temp_c_safra" in df_a.columns and "qtd_t" in df_a.columns:
+        st.subheader(f"Temperatura Média na Safra × {metric_label}")
+        if "temp_c_safra" in df_a.columns and metric_col in df_a.columns:
+            df_temp = df_a.dropna(subset=["temp_c_safra", metric_col])
             fig_scatter_temp = scatter_correlacao(
-                df_a.dropna(subset=["temp_c_safra", "qtd_t"]),
-                x="temp_c_safra", y="qtd_t", color="uf",
-                title=f"Temperatura Média na Safra vs Produção — {cultura_sel.split()[0]}",
+                df_temp,
+                x="temp_c_safra", y=metric_col, color="uf",
+                title=f"Temperatura Média na Safra vs {metric_label} — {cultura_sel.split()[0]}",
                 xlab="Temperatura Média na Safra (°C)",
-                ylab="Quantidade Produzida (t)",
+                ylab=metric_label,
             )
             st.plotly_chart(fig_scatter_temp, use_container_width=True)
         else:
-            st.info(
-                "Coluna `temp_c_safra` não encontrada. "
-                "Verifique se o ETL foi executado com dados INMET disponíveis."
-            )
+            if "temp_c_safra" not in df_a.columns:
+                st.info(
+                    "Coluna `temp_c_safra` não encontrada. Verifique se o ETL foi executado com dados INMET disponíveis."
+                )
+            else:
+                st.info(
+                    f"Coluna `{metric_col}` não encontrada no dataset. Rode o pipeline ETL atualizado com PAM e SIDRA."
+                )
 
         st.divider()
 
