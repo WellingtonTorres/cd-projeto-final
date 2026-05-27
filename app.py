@@ -97,7 +97,7 @@ ufs_disp = UFS_ALVO
 if dados_ok and "uf" in df_anual.columns:
     ufs_disp = sorted(df_anual["uf"].dropna().unique().tolist())
 
-ufs_sel = st.sidebar.multiselect("UFs", ufs_disp, default=ufs_disp[:8])
+ufs_sel = st.sidebar.multiselect("UFs", ufs_disp, default=ufs_disp)
 if not ufs_sel:
     ufs_sel = ufs_disp
 
