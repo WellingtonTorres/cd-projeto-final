@@ -110,10 +110,6 @@ python scripts/fetch_inmet.py --anos 2022 2023 2024
 
 **Anomalias climáticas:** calculadas como desvio em relação à climatologia 2020–2024 de cada UF×mês, não ao ano civil.
 
-## Screenshots
-
-*(capturas serão adicionadas ao `docs/screenshots/` após a execução do dashboard)*
-
 ## Limitações Conhecidas
 
 - O IPCA não cobre todos os estados (apenas RMs disponíveis no SIDRA). UFs sem RM usam o índice nacional.
