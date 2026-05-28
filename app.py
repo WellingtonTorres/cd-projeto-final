@@ -97,7 +97,7 @@ ufs_disp = UFS_ALVO
 if dados_ok and "uf" in df_anual.columns:
     ufs_disp = sorted(df_anual["uf"].dropna().unique().tolist())
 
-ufs_sel = st.sidebar.multiselect("UFs", ufs_disp, default=ufs_disp[:8])
+ufs_sel = st.sidebar.multiselect("UFs", ufs_disp, default=ufs_disp)
 if not ufs_sel:
     ufs_sel = ufs_disp
 
@@ -448,26 +448,64 @@ with tabs[4]:
         sem_dados()
     else:
         # ── 5.1 Scatter clima × produção ────────────────────────────────────
-        st.subheader("1. Anomalia de Chuva na Safra × Quantidade Produzida")
+        st.subheader("1. Clima na Safra × Produção")
         st.markdown(
-            "Cada ponto é um UF-ano. A reta de tendência (OLS) indica a direção da relação: "
-            "mais chuva na safra → mais produção?"
+            "Cada ponto é um UF-ano. Use o menu abaixo para comparar a relação entre chuva/temperatura na safra "
+            "e duas métricas de produção: quantidade produzida ou área plantada menos área colhida."
         )
 
-        if "anomalia_chuva_safra" in df_a.columns and "qtd_t" in df_a.columns:
+        produto_metric = st.selectbox(
+            "Métrica de produção",
+            options=[
+                ("Quantidade Produzida (t)", "qtd_t"),
+                ("Rendimento Médio (kg/ha)", "rendimento_kg_ha"),
+            ],
+            format_func=lambda x: x[0],
+            index=0,
+        )
+        metric_label, metric_col = produto_metric
+
+        st.subheader(f"Chuva na Safra × {metric_label}")
+        if "anomalia_chuva_safra" in df_a.columns and metric_col in df_a.columns:
+            df_chuva = df_a.dropna(subset=["anomalia_chuva_safra", metric_col])
             fig_scatter = scatter_correlacao(
-                df_a.dropna(subset=["anomalia_chuva_safra", "qtd_t"]),
-                x="anomalia_chuva_safra", y="qtd_t", color="uf",
-                title=f"Anomalia de Chuva na Safra vs Produção — {cultura_sel.split()[0]}",
+                df_chuva,
+                x="anomalia_chuva_safra", y=metric_col, color="uf",
+                title=f"Anomalia de Chuva na Safra vs {metric_label} — {cultura_sel.split()[0]}",
                 xlab="Anomalia de Chuva (mm, vs climatologia)",
-                ylab="Quantidade Produzida (t)",
+                ylab=metric_label,
             )
             st.plotly_chart(fig_scatter, use_container_width=True)
         else:
-            st.info(
-                "Coluna `anomalia_chuva_safra` não encontrada. "
-                "Verifique se o ETL foi executado com dados INMET disponíveis."
+            if "anomalia_chuva_safra" not in df_a.columns:
+                st.info(
+                    "Coluna `anomalia_chuva_safra` não encontrada. Verifique se o ETL foi executado com dados INMET disponíveis."
+                )
+            else:
+                st.info(
+                    f"Coluna `{metric_col}` não encontrada no dataset. Rode o pipeline ETL atualizado com PAM e SIDRA."
+                )
+
+        st.subheader(f"Temperatura Média na Safra × {metric_label}")
+        if "temp_c_safra" in df_a.columns and metric_col in df_a.columns:
+            df_temp = df_a.dropna(subset=["temp_c_safra", metric_col])
+            fig_scatter_temp = scatter_correlacao(
+                df_temp,
+                x="temp_c_safra", y=metric_col, color="uf",
+                title=f"Temperatura Média na Safra vs {metric_label} — {cultura_sel.split()[0]}",
+                xlab="Temperatura Média na Safra (°C)",
+                ylab=metric_label,
             )
+            st.plotly_chart(fig_scatter_temp, use_container_width=True)
+        else:
+            if "temp_c_safra" not in df_a.columns:
+                st.info(
+                    "Coluna `temp_c_safra` não encontrada. Verifique se o ETL foi executado com dados INMET disponíveis."
+                )
+            else:
+                st.info(
+                    f"Coluna `{metric_col}` não encontrada no dataset. Rode o pipeline ETL atualizado com PAM e SIDRA."
+                )
 
         st.divider()
 
@@ -566,6 +604,79 @@ with tabs[4]:
                         "precede a variação do IPCA em N meses. Lags de 3–9 meses são "
                         "esperados (tempo entre safra, processamento e prateleira)."
                     )
+
+            st.divider()
+            st.subheader("4. Sensibilidade do Rendimento e Risco de Inflação")
+            st.markdown(
+                "Correlação entre chuva na safra e rendimento com o "
+                "melhor lag de IPCA por UF, para destacar os estados onde o clima "
+                "tem maior potencial de transmissão para a inflação de alimentos."
+            )
+
+            if {
+                "anomalia_chuva_safra",
+                "rendimento_kg_ha",
+            }.issubset(df_a.columns) and {
+                "anomalia_chuva",
+                "ipca_var_mensal",
+            }.issubset(df_m.columns):
+                df_rend_pearson = pearson_matrix(
+                    df_a.dropna(subset=["anomalia_chuva_safra", "rendimento_kg_ha"]),
+                    ["anomalia_chuva_safra"],
+                    ["rendimento_kg_ha"],
+                ).rename(columns={"anomalia_chuva_safra": "r_chuva_rend"})
+
+                df_lag_resumo = resumo_lag_por_uf(df_m, max_lag=lag_max)
+                if not df_rend_pearson.empty and not df_lag_resumo.empty:
+                    df_risco = df_rend_pearson[["uf", "r_chuva_rend"]].merge(
+                        df_lag_resumo, on="uf", how="inner"
+                    )
+                    df_risco["risk_score"] = df_risco["r_chuva_rend"].abs() + df_risco["pearson_r"].abs()
+                    df_risco = df_risco.sort_values("risk_score", ascending=False)
+
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.subheader("Estados com maior risco climático")
+                        fig_risk = barchart_top_ufs(
+                            df_risco,
+                            x="uf",
+                            y="risk_score",
+                            title="Índice de Risco: Sensibilidade de Rendimento + Lag de IPCA",
+                            ylab="Risk Score",
+                        )
+                        st.plotly_chart(fig_risk, use_container_width=True)
+
+                    with c2:
+                        st.subheader("Detalhes por UF")
+                        st.dataframe(
+                            df_risco[
+                                ["uf", "r_chuva_rend", "melhor_lag", "pearson_r", "risk_score"]
+                            ]
+                            .rename(columns={
+                                "uf": "UF",
+                                "r_chuva_rend": "r (Chuva Safra × Rendimento)",
+                                "melhor_lag": "Melhor Lag (meses)",
+                                "pearson_r": "r (Chuva × IPCA)",
+                                "risk_score": "Índice de Risco",
+                            })
+                            .reset_index(drop=True),
+                            use_container_width=True,
+                        )
+
+                    st.markdown(
+                        "**Insight:** Estados com valores mais altos no índice de risco possuem a maior "
+                        "combinação de sensibilidade climática na safra e/ou impacto no IPCA. "
+                        "Um score alto indica que o estado é criticamente relevante em pelo menos um desses fatores."
+                    )
+                else:
+                    st.info(
+                        "Não há dados suficientes para calcular a sensibilidade de rendimento ou o índice de risco."
+                    )
+            else:
+                st.info(
+                    "As colunas necessárias para a nova análise não estão disponíveis. "
+                    "Verifique se o ETL foi executado com rendimento e IPCA completos."
+                )
         else:
             st.info(
                 "Dados de anomalia de chuva ou IPCA não disponíveis. "
